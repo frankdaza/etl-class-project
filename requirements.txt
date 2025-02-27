@@ -1,0 +1,8 @@
+pip==25.0.1
+pandas==2.2.3 
+openpyxl==3.1.5
+numpy==2.2.3
+faker==36.1.1
+sqlalchemy==2.0.38
+psycopg2-binary==2.9.10
+python-dotenv==1.0.1
