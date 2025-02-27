@@ -12,7 +12,7 @@ Faker.seed(42)  # Ensure reproducibility
 # Define valid service types (excluding "Eutanasia")
 SERVICES = [
     "Vacunación", "Venta Alimentos", "Cita Veterinario(a)", "Baño",
-    "Desparacitada", "Peluqueada", "Otros"
+    "Desparacitada", "Peluquería", "Otros"
 ]
 
 # Special case: "Eutanasia" can only be used once per pet
@@ -43,7 +43,7 @@ transactions = []
 # Current date for validation
 today = datetime.today().date()
 
-# Determine which 5% of pets will receive "Eutanasia"
+# Determine which 8% of pets will receive "Eutanasia"
 total_pets = len(df_mascotas)
 num_pets_with_euthanasia = int(total_pets * 0.08)  # 8% of total pets
 pets_with_euthanasia = set(random.sample(range(total_pets), num_pets_with_euthanasia))
@@ -71,7 +71,7 @@ for index, row in df_mascotas.iterrows():
         # Generate between 3 to 30 transactions for this client
         num_transactions = random.randint(3, 30)
         pet_transactions = []
-        pet_has_euthanasia = index in pets_with_euthanasia  # Only 5% of pets
+        pet_has_euthanasia = index in pets_with_euthanasia  # Only 8% of pets
 
         for _ in range(num_transactions):
             # If the pet has already received "Eutanasia", stop generating more transactions for it
@@ -98,7 +98,7 @@ for index, row in df_mascotas.iterrows():
                 "Fecha del Servicio": fecha_servicio
             })
 
-        # If the pet is among the 5% selected for "Eutanasia", ensure it is the last transaction
+        # If the pet is among the 8% selected for "Eutanasia", ensure it is the last transaction
         if pet_has_euthanasia:
             max_date = max(t["Fecha del Servicio"] for t in pet_transactions) if pet_transactions else today
             euthanasia_transaction = {

@@ -6,3 +6,5 @@ faker==36.1.1
 sqlalchemy==2.0.38
 psycopg2-binary==2.9.10
 python-dotenv==1.0.1
+jupyter_client==8.6.3
+jupyter_core==5.7.2

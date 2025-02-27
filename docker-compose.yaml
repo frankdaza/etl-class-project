@@ -1,11 +1,11 @@
 services:
-  db:
+  staging_db:
     image: postgres:17.3-alpine3.21
-    container_name: etl_db
+    container_name: staging_db
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_STAGING_USER}
+      - POSTGRES_PASSWORD=${DB_STAGING_PASSWORD}
+      - POSTGRES_DB=${DB_STAGING_NAME}
     ports:
-      - "${DB_PORT}:5432"
+      - "${DB_STAGING_PORT}:5432"
     restart: always
