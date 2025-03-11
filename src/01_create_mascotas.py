@@ -95,7 +95,7 @@ def main():
     resources_path = os.getenv("RESOURCES_PATH")
     print(f"Resources path: {resources_path}")
 
-    mascotas_propietarios_original_file = f"{resources_path}/Mascotas_Propietarios_despensaAnimal_ORIGINAL.xlsx"
+    mascotas_propietarios_original_file = f"{resources_path}/Mascotas_Propietarios_despensaanimal.xlsx"
     mascotas_propietarios_generated_file = f"{resources_path}/Mascotas_Propietarios_despensaAnimal_Generated.csv"
 
     # Initialize Faker
