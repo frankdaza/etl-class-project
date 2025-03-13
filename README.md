@@ -41,14 +41,8 @@ $ docker compose down
 $ deactivate
 ```
 
-#### Run the script that generate a new Mascotas Propietarios CSV file:
+#### Run the script that generate a new Mascotas Propietarios and Propietarios Transacciones CSV files:
 ```bash
-$ cd src/main/python/generate_datasources
-$ python3 script_1_generate_mascotas_propietarios.py
-```
-
-#### Run the script that generate a new Propietarios Transacciones CSV file:
-```bash
-$ cd src/main/python/generate_datasources
-$ python3 script_2_generate_propietarios_transacciones.py
+$ python3 src/01_create_mascotas.py
+$ python3 src/02_create_transacciones.py
 ```
