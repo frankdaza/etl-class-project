@@ -1,11 +1,13 @@
 pip==25.0.1
-pandas==2.2.3 
+pandas==1.5.3
 openpyxl==3.1.5
-numpy==2.2.3
+numpy==1.23.5
 faker==36.1.1
-sqlalchemy==1.4.54
 psycopg2-binary==2.9.10
 python-dotenv==1.0.1
 jupyter_client==8.6.3
 jupyter_core==5.7.2
 apache-airflow==2.10.5
+SQLAlchemy==1.4.54
+pyarrow==15.0.0
+fastparquet==2024.2.0

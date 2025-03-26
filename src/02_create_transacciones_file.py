@@ -1,3 +1,8 @@
+'''
+This script generates a new CSV file with transaction
+data from the Propietarios and Transacciones info.
+'''
+
 import os
 from dotenv import load_dotenv
 import pandas as pd

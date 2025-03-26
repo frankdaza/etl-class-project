@@ -43,6 +43,6 @@ $ deactivate
 
 #### Run the script that generate a new Mascotas Propietarios and Propietarios Transacciones CSV files:
 ```bash
-$ python3 src/01_create_mascotas.py
-$ python3 src/02_create_transacciones.py
+$ python3 src/01_create_mascotas_file.py
+$ python3 src/02_create_transacciones_file.py
 ```

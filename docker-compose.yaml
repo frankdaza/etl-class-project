@@ -9,3 +9,14 @@ services:
     ports:
       - "${DB_STAGING_PORT}:5432"
     restart: always
+
+  dwh_db:
+    image: postgres:17.3-alpine3.21
+    container_name: dwh_db
+    environment:
+      - POSTGRES_USER=${DB_DWH_USER}
+      - POSTGRES_PASSWORD=${DB_DWH_PASSWORD}
+      - POSTGRES_DB=${DB_DWH_NAME}
+    ports:
+      - "${DB_DWH_PORT}:5432"
+    restart: always

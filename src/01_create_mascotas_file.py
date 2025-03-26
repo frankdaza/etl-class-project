@@ -1,3 +1,8 @@
+'''
+This script generates a new CSV file with fake data from the
+Mascotas_Propietarios_despensaAnimal file.
+'''
+
 import os
 from dotenv import load_dotenv
 import pandas as pd
