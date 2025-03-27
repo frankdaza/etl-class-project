@@ -5,7 +5,7 @@ This module will contain the ETL pipeline for the project.
 import os
 from dotenv import load_dotenv
 import psycopg2
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData, Table
 from sqlalchemy.types import String, Integer, Date
 from sqlalchemy.dialects.postgresql import insert
 import pandas as pd
@@ -17,9 +17,9 @@ load_dotenv()
 
 
 def upsert_method(table, conn, keys, data_iter):
-    """
+    '''
     Custom method for pandas.to_sql() to perform upsert (ON CONFLICT DO NOTHING).
-    """
+    '''
     # Convert the iterator of rows into a list of dictionaries
     data = [dict(zip(keys, row)) for row in data_iter]
     if not data:
@@ -34,6 +34,41 @@ def upsert_method(table, conn, keys, data_iter):
     # Build the insert statement with ON CONFLICT DO NOTHING on 'numero_documento'
     stmt = insert(reflected_table).values(data)
     stmt = stmt.on_conflict_do_nothing(index_elements=['numero_documento'])
+    conn.execute(stmt)
+
+
+def upsert_method_date(table, conn, keys, data_iter):
+    '''
+    Custom upsert for dim_date (on 'date_value').
+    '''
+    data = [dict(zip(keys, row)) for row in data_iter]
+    if not data:
+        return
+
+    metadata = MetaData()
+    reflected_table = Table(table.name, metadata, autoload_with=conn)
+
+    stmt = insert(reflected_table).values(data)
+    stmt = stmt.on_conflict_do_nothing(index_elements=['date_value'])
+    conn.execute(stmt)
+
+def upsert_method_services(table, conn, keys, data_iter):
+    '''
+    Custom upsert for dim_services (on 'service_name').
+    '''
+    from sqlalchemy import MetaData, Table
+    from sqlalchemy.dialects.postgresql import insert
+
+    data = [dict(zip(keys, row)) for row in data_iter]
+    if not data:
+        return
+
+    metadata = MetaData()
+    reflected_table = Table(table.name, metadata, autoload_with=conn)
+
+    stmt = insert(reflected_table).values(data)
+    # On conflict, do nothing (i.e. skip duplicate rows)
+    stmt = stmt.on_conflict_do_nothing(index_elements=['service_name'])
     conn.execute(stmt)
 
 
@@ -274,7 +309,7 @@ def transform(**kwargs):
         host=db_staging_host,
         port=db_staging_port
     )
-    connStaging.autocommit = True 
+    connStaging.autocommit = True
 
     #################################################
     # Create the database engine for the staging data
@@ -442,12 +477,15 @@ def load(**kwargs):
     if not all([db_dwh_user, db_dwh_password, db_dwh_host, db_dwh_name]):
         raise ValueError('One or more Data Warehouse environment variables are missing.')
 
-    db_dwh_engine = create_engine(f'postgresql+psycopg2://{db_dwh_user}:{db_dwh_password}@{db_dwh_host}:{db_dwh_port}/{db_dwh_name}')
+    db_dwh_engine = create_engine(
+        f'postgresql+psycopg2://{db_dwh_user}:{db_dwh_password}@{db_dwh_host}:{db_dwh_port}/{db_dwh_name}'
+    )
 
     ##################################################
-    # Creating Tables (if they don't exist)
+    # Creating Dimension and Fact Tables (if not exist)
     ##################################################
     with db_dwh_engine.begin() as conn:
+        # Existing dim_clients
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS dim_clients (
                 numero_documento VARCHAR PRIMARY KEY,
@@ -457,6 +495,27 @@ def load(**kwargs):
             );
         '''))
 
+        # 1) Create dim_date table
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS dim_date (
+                date_id SERIAL PRIMARY KEY,
+                date_value DATE UNIQUE,
+                year INTEGER,
+                month INTEGER,
+                day INTEGER
+            );
+        '''))
+
+        # 2) Create dim_services table
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS dim_services (
+                service_id SERIAL PRIMARY KEY,
+                service_name VARCHAR UNIQUE
+                -- Add more columns if needed
+            );
+        '''))
+
+        # Existing fact_transactions
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS fact_transactions (
                 id SERIAL PRIMARY KEY,
@@ -467,11 +526,11 @@ def load(**kwargs):
             );
         '''))
 
-        logging.info('Fact and Dimension tables created successfully (if not existed).')
+        logging.info('All dimension and fact tables created successfully (if not existed).')
 
-    ##################################################
-    # Insert Data into Dimension Table using upsert
-    ##################################################
+    ##############################################
+    # Dimension 1: dim_clients (already existing)
+    ##############################################
     df_dim_clients = df_merged[['numero_documento', 'nombre_propietario', 'ciudad', 'direccion']].drop_duplicates()
 
     with db_dwh_engine.connect().execution_options(autocommit=True) as connection:
@@ -480,15 +539,72 @@ def load(**kwargs):
             con=connection,
             if_exists='append',
             index=False,
-            method=upsert_method  # Use our custom upsert method here
+            method=upsert_method
         )
-
     logging.info(f'{len(df_dim_clients)} records processed for dim_clients.')
 
-    ##################################################
-    # Insert Data into Fact Table
-    ##################################################
-    df_fact_transactions = df_merged[['numero_documento', 'servicio_prestado', 'valor_servicio', 'fecha_servicio']]
+    #################################
+    # Dimension 2: dim_date
+    #################################
+    # Pull distinct dates from 'fecha_servicio'
+    # Convert to datetime if needed
+    df_merged['fecha_servicio'] = pd.to_datetime(df_merged['fecha_servicio'], errors='coerce')
+
+    df_dim_date = (
+        df_merged[['fecha_servicio']]
+        .dropna()                    # remove NaN dates
+        .drop_duplicates()          # distinct dates
+        .rename(columns={'fecha_servicio': 'date_value'})
+    )
+    # Add year, month, day columns
+    df_dim_date['year'] = df_dim_date['date_value'].dt.year
+    df_dim_date['month'] = df_dim_date['date_value'].dt.month
+    df_dim_date['day'] = df_dim_date['date_value'].dt.day
+
+    with db_dwh_engine.connect().execution_options(autocommit=True) as connection:
+        df_dim_date.to_sql(
+            'dim_date',
+            con=connection,
+            if_exists='append',
+            index=False,
+            method=upsert_method_date
+        )
+    logging.info(f'{len(df_dim_date)} records processed for dim_date.')
+
+    ##################################
+    # Dimension 3: dim_services
+    ##################################
+    # Pull distinct services from 'servicio_prestado'
+    df_dim_services = (
+        df_merged[['servicio_prestado']]
+        .dropna()
+        .drop_duplicates()
+        .rename(columns={'servicio_prestado': 'service_name'})
+    )
+
+    with db_dwh_engine.connect().execution_options(autocommit=True) as connection:
+        df_dim_services.to_sql(
+            'dim_services',
+            con=connection,
+            if_exists='append',
+            index=False,
+            method=upsert_method_services
+        )
+    logging.info(f'{len(df_dim_services)} records processed for dim_services.')
+
+    #############################
+    # Fact Table: fact_transactions
+    #############################
+    # For a true star schema, you'd typically store only the surrogate keys
+    # (like date_id, service_id) in the fact table. That requires:
+    #   1) Retrieving the generated IDs from dim_date/dim_services
+    #   2) Merging them back with df_merged
+    #   3) Inserting (date_id, service_id) instead of raw date/service strings.
+    #
+    # Below is the 'simple' approach that uses the existing structure:
+    df_fact_transactions = df_merged[
+        ['numero_documento', 'servicio_prestado', 'valor_servicio', 'fecha_servicio']
+    ].copy()
 
     with db_dwh_engine.connect().execution_options(autocommit=True) as connection:
         df_fact_transactions.to_sql(
@@ -500,4 +616,5 @@ def load(**kwargs):
         )
 
     logging.info(f'{len(df_fact_transactions)} records inserted into fact_transactions.')
+
     logging.info('Load process completed successfully!\n')
