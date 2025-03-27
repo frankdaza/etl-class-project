@@ -24,9 +24,14 @@ $ pip install -r requirements.txt
 $ cp .env.example .env
 ```
 
-#### 5. Raise the local PostgreSQL database:
+#### 5. Raise the local PostgreSQL databases (Staging, Datawarehouse) and Apache Superset (por: 8088):
 ```bash
 $ docker compose up -d
+```
+
+#### 6. Run Apache Airflow on port 8080:
+```bash
+$ airflow standalone
 ```
 
 ## Optional
