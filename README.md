@@ -24,9 +24,14 @@ $ pip install -r requirements.txt
 $ cp .env.example .env
 ```
 
-#### 5. Raise the local PostgreSQL database:
+#### 5. Raise the local PostgreSQL databases (Staging, Datawarehouse) and Apache Superset (por: 8088):
 ```bash
 $ docker compose up -d
+```
+
+#### 6. Run Apache Airflow on port 8080:
+```bash
+$ airflow standalone
 ```
 
 ## Optional
@@ -43,6 +48,6 @@ $ deactivate
 
 #### Run the script that generate a new Mascotas Propietarios and Propietarios Transacciones CSV files:
 ```bash
-$ python3 src/01_create_mascotas.py
-$ python3 src/02_create_transacciones.py
+$ python3 src/01_create_mascotas_file.py
+$ python3 src/02_create_transacciones_file.py
 ```

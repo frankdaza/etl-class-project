@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   staging_db:
     image: postgres:17.3-alpine3.21
@@ -9,3 +11,60 @@ services:
     ports:
       - "${DB_STAGING_PORT}:5432"
     restart: always
+
+  dwh_db:
+    image: postgres:17.3-alpine3.21
+    container_name: dwh_db
+    environment:
+      - POSTGRES_USER=${DB_DWH_USER}
+      - POSTGRES_PASSWORD=${DB_DWH_PASSWORD}
+      - POSTGRES_DB=${DB_DWH_NAME}
+    ports:
+      - "${DB_DWH_PORT}:5432"
+    restart: always
+
+  superset:
+    image: apache/superset:2.1.0
+    container_name: superset
+    platform: linux/amd64
+    depends_on:
+      - dwh_db
+    volumes:
+      - ./docker-assets/superset_config.py:/app/pythonpath/superset_config.py
+    environment:
+      # Superset admin user credentials
+      SUPERSET_ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+      SUPERSET_ADMIN_FIRSTNAME: ${SUPERSET_ADMIN_FIRSTNAME}
+      SUPERSET_ADMIN_LASTNAME: ${SUPERSET_ADMIN_LASTNAME}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+
+      # If you want to connect to your Postgres DB out-of-the-box, you can set these:
+      SUPERSET_DATABASE_USER: ${DB_DWH_USER}
+      SUPERSET_DATABASE_PASSWORD: ${DB_DWH_PASSWORD}
+      SUPERSET_DATABASE_HOST: ${DB_DWH_HOST}
+      SUPERSET_DATABASE_PORT: ${DB_DWH_PORT}
+      SUPERSET_DATABASE_DB: ${DB_DWH_NAME}
+
+      # Don't load examples unless you want the sample dashboards
+      SUPERSET_LOAD_EXAMPLES: "no"
+
+      # Important: provide a strong random secret key in production
+      SECRET_KEY: ${SUPERSET_SECRET_KEY}
+    ports:
+      - "8088:8088"
+    # If you have a named network, uncomment and match with your `networks:` below
+    # networks:
+    #   - airflow_network
+    command: >
+      /bin/bash -c "superset db upgrade &&
+      superset fab create-admin --username \$SUPERSET_ADMIN_USERNAME --password \$SUPERSET_ADMIN_PASSWORD --firstname \$SUPERSET_ADMIN_FIRSTNAME --lastname \$SUPERSET_ADMIN_LASTNAME --email \$SUPERSET_ADMIN_EMAIL &&
+      superset init &&
+      superset run -p 8088 --host 0.0.0.0"
+      
+# If you already have a default network or an existing network, you can omit this.
+# Otherwise, define a network to ensure the containers can communicate:
+# networks:
+#   default:
+#     name: my-etl-network
+#     driver: bridge
